@@ -293,7 +293,7 @@ namespace winsw
                 try
                 {
                     WriteEvent("ProcessKill " + _process.Id);
-                    StopProcessAndChildren(_process.Id);
+                    StopProcess(_process.Id);
                 }
                 catch (InvalidOperationException)
                 {
