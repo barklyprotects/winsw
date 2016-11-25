@@ -290,15 +290,22 @@ namespace winsw
 
             if (stoparguments == null)
             {
-                try
+                SignalShutdownPending();
+                StartThread(() =>
                 {
-                    WriteEvent("ProcessKill " + _process.Id);
-                    StopProcess(_process.Id);
-                }
-                catch (InvalidOperationException)
-                {
-                    // already terminated
-                }
+                    try
+                    {
+                        WriteEvent("ProcessKill " + _process.Id);
+                        StopProcess(_process.Id);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // already terminated
+                    }
+                });
+
+                WaitForProcessToExit(_process);
+                SignalShutdownComplete();
             }
             else
             {
@@ -383,7 +390,7 @@ namespace winsw
             bool successful = SigIntHelper.SendSIGINTToProcess(proc, _descriptor.StopTimeout);
             if (successful)
             {
-                WriteEvent("SIGINT to" + pid + " successful");
+                WriteEvent("SIGINT to " + pid + " successful");
             }
             else
             {
@@ -407,7 +414,7 @@ namespace winsw
             {
 //                WriteEvent("WaitForProcessToExit [start]");
 
-                while (!processoWait.WaitForExit(_descriptor.SleepTime.Milliseconds))
+                while (!processoWait.WaitForExit((int)_descriptor.SleepTime.TotalMilliseconds))
                 {
                     SignalShutdownPending();
 //                    WriteEvent("WaitForProcessToExit [repeat]");
@@ -425,8 +432,8 @@ namespace winsw
         {
             IntPtr handle = ServiceHandle;
             _wrapperServiceStatus.checkPoint++;
-            _wrapperServiceStatus.waitHint = _descriptor.WaitHint.Milliseconds;
-//            WriteEvent("SignalShutdownPending " + wrapperServiceStatus.checkPoint + ":" + wrapperServiceStatus.waitHint);
+            _wrapperServiceStatus.waitHint = (int)_descriptor.WaitHint.TotalMilliseconds;
+            //WriteEvent("SignalShutdownPending " + _wrapperServiceStatus.checkPoint + ":" + _wrapperServiceStatus.waitHint);
             _wrapperServiceStatus.currentState = (int)State.SERVICE_STOP_PENDING;
             Advapi32.SetServiceStatus(handle, ref _wrapperServiceStatus);
         }
@@ -435,7 +442,7 @@ namespace winsw
         {
             IntPtr handle = ServiceHandle;
             _wrapperServiceStatus.checkPoint++;
-//            WriteEvent("SignalShutdownComplete " + wrapperServiceStatus.checkPoint + ":" + wrapperServiceStatus.waitHint);
+            //WriteEvent("SignalShutdownComplete " + _wrapperServiceStatus.checkPoint + ":" + _wrapperServiceStatus.waitHint);
             _wrapperServiceStatus.currentState = (int)State.SERVICE_STOPPED;
             Advapi32.SetServiceStatus(handle, ref _wrapperServiceStatus);
         }
